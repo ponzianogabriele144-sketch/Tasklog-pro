@@ -8,6 +8,18 @@ Progettata con un'interfaccia moderna e pulita, palette colori coordinata sul **
 
 ---
 
+## 🔐 Credenziali di Accesso Riservate (Login Permanente)
+
+L'applicazione include un sistema di autenticazione aziendale una tantum con persistenza permanente:
+
+- **Username**: `Ponziano`
+- **Password**: `1234`
+
+> [!NOTE]
+> **Nessuna Scadenza di Sessione**: il sistema memorizza le credenziali in `localStorage` e tramite cookie di sicurezza con durata estesa (10 anni). Una volta effettuato l'accesso sul tuo iPhone o Mac, rimarrai permanentemente autenticato senza dover più ripetere il login.
+
+---
+
 ## ✨ Funzionalità Principali
 
 1. **Modulo di Registrazione Attività Giornaliere:**

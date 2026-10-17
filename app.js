@@ -1,5 +1,70 @@
 const { useState, useEffect, useMemo, useRef } = React;
 
+// --- AUTH CONFIGURATION & PERSISTENT SESSION HELPERS ---
+const VALID_USERNAME = "Ponziano";
+const VALID_PASSWORD = "1234";
+const AUTH_STORAGE_KEY = "tasklog_pro_permanent_auth";
+const AUTH_COOKIE_NAME = "tasklog_auth_token";
+
+// Retrieve permanent session from localStorage or permanent cookie
+function getStoredAuth() {
+  try {
+    // 1. Try LocalStorage
+    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (stored) {
+      const data = JSON.parse(stored);
+      if (data && data.authenticated && data.username && data.username.toLowerCase() === VALID_USERNAME.toLowerCase()) {
+        return data;
+      }
+    }
+
+    // 2. Fallback: check permanent Cookie
+    const cookies = document.cookie.split(";");
+    for (let c of cookies) {
+      const parts = c.trim().split("=");
+      if (parts[0] === AUTH_COOKIE_NAME && parts[1]) {
+        const decoded = JSON.parse(decodeURIComponent(parts.slice(1).join("=")));
+        if (decoded && decoded.authenticated && decoded.username && decoded.username.toLowerCase() === VALID_USERNAME.toLowerCase()) {
+          // Re-sync with localStorage
+          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(decoded));
+          return decoded;
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Auth parsing error:", err);
+  }
+  return null;
+}
+
+// Store session permanently (infinite localStorage + 10-year max cookie)
+function setPermanentAuth(username) {
+  const authData = {
+    authenticated: true,
+    username: username || VALID_USERNAME,
+    loginTimestamp: Date.now(),
+    loginDate: new Date().toISOString(),
+    permanentSession: true,
+    token: "tk_perm_" + Math.random().toString(36).substring(2) + Date.now().toString(36)
+  };
+
+  // LocalStorage has no expiration by browser design
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData));
+
+  // Cookie configured with 10 years Max-Age (315,360,000 seconds)
+  const maxAgeSeconds = 315360000;
+  const expireDate = new Date(Date.now() + maxAgeSeconds * 1000).toUTCString();
+  document.cookie = `${AUTH_COOKIE_NAME}=${encodeURIComponent(JSON.stringify(authData))}; expires=${expireDate}; Max-Age=${maxAgeSeconds}; path=/; SameSite=Lax`;
+
+  return authData;
+}
+
+// Remove permanent session
+function clearPermanentAuth() {
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+  document.cookie = `${AUTH_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; Max-Age=0`;
+}
+
 // --- INITIAL SAMPLE DATA ---
 const DEFAULT_DEMO_ACTIVITIES = [
   {
@@ -11,7 +76,7 @@ const DEFAULT_DEMO_ACTIVITIES = [
     hours: 3.5,
     status: "Completata",
     priority: "Alta",
-    operator: "Gabriele Ponziano",
+    operator: "Ponziano",
     notes: "Configurati gli endpoint sicuri per 3D Secure e gestione rimborsi automatici. Test superati in sandbox."
   },
   {
@@ -23,7 +88,7 @@ const DEFAULT_DEMO_ACTIVITIES = [
     hours: 1.0,
     status: "Completata",
     priority: "Media",
-    operator: "Gabriele Ponziano",
+    operator: "Ponziano",
     notes: "Definite le priorità di rilascio per la release 2.4 entro fine mese."
   },
   {
@@ -35,7 +100,7 @@ const DEFAULT_DEMO_ACTIVITIES = [
     hours: 4.0,
     status: "Completata",
     priority: "Urgente",
-    operator: "Gabriele Ponziano",
+    operator: "Ponziano",
     notes: "Tempi di generazione report mensile ridotti da 4.8s a 320ms con indici composti."
   },
   {
@@ -47,7 +112,7 @@ const DEFAULT_DEMO_ACTIVITIES = [
     hours: 2.5,
     status: "Completata",
     priority: "Media",
-    operator: "Gabriele Ponziano",
+    operator: "Ponziano",
     notes: "Revocati 4 account obsoleti e abilitata autenticazione a due fattori (MFA) obbligatoria."
   },
   {
@@ -59,7 +124,7 @@ const DEFAULT_DEMO_ACTIVITIES = [
     hours: 5.0,
     status: "In corso",
     priority: "Alta",
-    operator: "Gabriele Ponziano",
+    operator: "Ponziano",
     notes: "Integrata libreria di scansione rapida per codici EAN-13 e QR Code pallet."
   },
   {
@@ -71,7 +136,7 @@ const DEFAULT_DEMO_ACTIVITIES = [
     hours: 2.0,
     status: "Completata",
     priority: "Bassa",
-    operator: "Gabriele Ponziano",
+    operator: "Ponziano",
     notes: "Assistenza guidata per caricamento listini e firma digitale contratti quadro."
   },
   {
@@ -83,7 +148,7 @@ const DEFAULT_DEMO_ACTIVITIES = [
     hours: 2.5,
     status: "In revisione",
     priority: "Alta",
-    operator: "Gabriele Ponziano",
+    operator: "Ponziano",
     notes: "Snapshot orari configurati su storage georidondante. Verifica ripristino programmata per domani."
   }
 ];
@@ -122,6 +187,30 @@ const Icons = {
       <rect x="195" y="337" width="130" height="16" rx="8" fill="#94A3B8"/>
       <rect x="290" y="375" width="120" height="52" rx="16" fill="#800020"/>
       <text x="350" y="410" fontFamily="sans-serif" fontSize="26" fontWeight="900" fill="#FFF" textAnchor="middle" letterSpacing="2">PRO</text>
+    </svg>
+  ),
+  Lock: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+    </svg>
+  ),
+  Key: () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M21 2l-2 2m-2-2l2 2m-2-2l-7 7m7 7l-7-7m7 7l-2-2m-2 2l2-2M7.5 13.5a4.5 4.5 0 1 1 6.36-6.36 4.5 4.5 0 0 1-6.36 6.36z"></path>
+    </svg>
+  ),
+  ShieldCheck: () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+      <path d="m9 12 2 2 4-4"></path>
+    </svg>
+  ),
+  LogOut: () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+      <polyline points="16 17 21 12 16 7"></polyline>
+      <line x1="21" y1="12" x2="9" y2="12"></line>
     </svg>
   ),
   Calendar: () => (
@@ -168,11 +257,6 @@ const Icons = {
       <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
     </svg>
   ),
-  Filter: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-    </svg>
-  ),
   Plus: () => (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
       <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -217,6 +301,12 @@ const Icons = {
       <circle cx="12" cy="12" r="3"></circle>
     </svg>
   ),
+  EyeOff: () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+      <line x1="1" y1="1" x2="23" y2="23"></line>
+    </svg>
+  ),
   Sun: () => (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="5"></circle>
@@ -249,11 +339,174 @@ const Icons = {
   )
 };
 
+// --- LOGIN SCREEN COMPONENT ---
+function LoginScreen({ onLoginSuccess }) {
+  const [username, setUsername] = useState("Ponziano");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setErrorMessage("");
+    setIsLoading(true);
+
+    setTimeout(() => {
+      const cleanUser = username.trim();
+      if (cleanUser.toLowerCase() === VALID_USERNAME.toLowerCase() && password === VALID_PASSWORD) {
+        // Authenticate permanently
+        const authData = setPermanentAuth(cleanUser);
+        onLoginSuccess(authData);
+      } else {
+        setIsLoading(false);
+        setErrorMessage("Credenziali non corrette. Verifica Username o Password.");
+      }
+    }, 300);
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-slate-950 text-slate-100">
+      <div className="w-full max-w-md bg-slate-900/90 border border-bordeaux-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/80 backdrop-blur-xl relative overflow-hidden">
+        
+        {/* Decorative Top Accent Glow */}
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-bordeaux-800 via-bordeaux-500 to-bordeaux-800"></div>
+
+        {/* Brand Logo & Header */}
+        <div className="flex flex-col items-center text-center mb-6">
+          <div className="relative mb-3">
+            <div className="absolute inset-0 rounded-2xl bg-bordeaux-700/40 blur-xl"></div>
+            <img src="./assets/icons/icon.svg" alt="TaskLog Pro" className="relative w-16 h-16 drop-shadow-xl" />
+          </div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-black tracking-tight text-white">
+              Task<span className="text-bordeaux-400">Log</span>
+            </h1>
+            <span className="px-2 py-0.5 text-[10px] font-black uppercase rounded-md bg-bordeaux-800 text-white border border-bordeaux-600">
+              PRO
+            </span>
+          </div>
+          <p className="text-xs font-semibold text-slate-400 mt-1">
+            Accesso Aziendale Riservato
+          </p>
+        </div>
+
+        {/* Permanent Session Guarantee Banner */}
+        <div className="mb-5 p-3.5 rounded-2xl bg-bordeaux-950/60 border border-bordeaux-800/70 flex items-start gap-3">
+          <div className="p-2 rounded-xl bg-bordeaux-900/80 text-bordeaux-300 shrink-0 mt-0.5">
+            <Icons.ShieldCheck />
+          </div>
+          <div className="text-xs">
+            <span className="font-bold text-white block">Accesso Permanente Attivo</span>
+            <span className="text-[11px] text-slate-300 leading-relaxed block mt-0.5">
+              Ti autentichi <strong>una sola volta</strong> e rimani sempre connesso su questo dispositivo (sessione senza scadenza).
+            </span>
+          </div>
+        </div>
+
+        {/* Error message */}
+        {errorMessage && (
+          <div className="mb-4 p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs font-semibold text-center flex items-center justify-center gap-2 animate-shake">
+            <span>⚠️</span>
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              Nome Utente (Username)
+            </label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                <Icons.User />
+              </span>
+              <input
+                type="text"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Inserisci Username"
+                className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white font-medium focus:outline-none focus:border-bordeaux-500 transition"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              Password
+            </label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                <Icons.Key />
+              </span>
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Inserisci Password"
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white font-mono focus:outline-none focus:border-bordeaux-500 transition"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300 transition"
+              >
+                {showPassword ? <Icons.EyeOff /> : <Icons.Eye />}
+              </button>
+            </div>
+          </div>
+
+          {/* Persistent Checkbox (Locked On) */}
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="rememberForever"
+              checked={true}
+              readOnly
+              className="w-4 h-4 rounded text-bordeaux-600 bg-slate-950 border-slate-700 accent-bordeaux-700 cursor-not-allowed"
+            />
+            <label htmlFor="rememberForever" className="text-xs text-slate-300 font-medium select-none cursor-pointer">
+              Ricorda sessione su questo dispositivo (Nessuna scadenza)
+            </label>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full mt-2 py-3 px-4 rounded-xl text-sm font-bold bg-gradient-to-r from-bordeaux-800 via-bordeaux-700 to-bordeaux-600 hover:from-bordeaux-700 hover:to-bordeaux-500 text-white shadow-xl shadow-bordeaux-950/80 transition-all transform active:scale-95 flex items-center justify-center gap-2"
+          >
+            {isLoading ? (
+              <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            ) : (
+              <>
+                <Icons.Lock />
+                <span>Accedi e Rimani Connesso</span>
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className="mt-6 pt-4 border-t border-slate-800/80 text-center text-[11px] text-slate-400">
+          Credenziali riservate aziendali • TaskLog Pro Enterprise
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- MAIN APPLICATION COMPONENT ---
 function App() {
   // Theme state
   const [theme, setTheme] = useState(() => localStorage.getItem("tasklog_theme") || "dark");
-  
+
+  // Persistent Auth State
+  const [authSession, setAuthSession] = useState(() => getStoredAuth());
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
   // Activities state
   const [activities, setActivities] = useState(() => {
     const saved = localStorage.getItem("tasklog_activities");
@@ -300,9 +553,19 @@ function App() {
     hours: 1.0,
     status: "Completata",
     priority: "Media",
-    operator: "Gabriele Ponziano",
+    operator: (authSession && authSession.username) ? authSession.username : "Ponziano",
     notes: ""
   });
+
+  // Update operator when auth changes
+  useEffect(() => {
+    if (authSession && authSession.username) {
+      setFormData(prev => ({
+        ...prev,
+        operator: authSession.username
+      }));
+    }
+  }, [authSession]);
 
   // Existing Projects list derived from activities
   const projectList = useMemo(() => {
@@ -334,6 +597,26 @@ function App() {
 
   // Form reference for auto-scroll on edit
   const formRef = useRef(null);
+
+  // Handle Logout
+  const handleLogout = () => {
+    clearPermanentAuth();
+    setAuthSession(null);
+    setShowLogoutConfirm(false);
+    showToast("Disconnessione completata.", "info");
+  };
+
+  // If not authenticated, render Login Screen
+  if (!authSession) {
+    return (
+      <LoginScreen
+        onLoginSuccess={(auth) => {
+          setAuthSession(auth);
+          showToast(`Benvenuto ${auth.username}! Sessione permanente avviata.`);
+        }}
+      />
+    );
+  }
 
   // Reset or fill form
   const handleEditClick = (act) => {
@@ -367,7 +650,7 @@ function App() {
       hours: 1.0,
       status: "Completata",
       priority: "Media",
-      operator: "Gabriele Ponziano",
+      operator: authSession.username || "Ponziano",
       notes: ""
     });
   };
@@ -418,7 +701,7 @@ function App() {
             hours: parseFloat(formData.hours) || 0.5,
             status: formData.status,
             priority: formData.priority,
-            operator: formData.operator.trim() || "Gabriele Ponziano",
+            operator: formData.operator.trim() || authSession.username,
             notes: formData.notes.trim()
           };
         }
@@ -437,7 +720,7 @@ function App() {
         hours: parseFloat(formData.hours) || 0.5,
         status: formData.status,
         priority: formData.priority,
-        operator: formData.operator.trim() || "Gabriele Ponziano",
+        operator: formData.operator.trim() || authSession.username,
         notes: formData.notes.trim()
       };
       setActivities([newAct, ...activities]);
@@ -679,13 +962,20 @@ function App() {
 
           {/* Action buttons in header */}
           <div className="flex items-center gap-2">
+            {/* Authenticated User Badge */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-bordeaux-900/50 text-xs text-slate-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="font-bold text-white hidden xs:inline">{authSession.username}</span>
+              <span className="text-[10px] text-bordeaux-400 font-semibold uppercase tracking-wider hidden sm:inline">Permanente</span>
+            </div>
+
             <button
               onClick={() => setShowIosGuide(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-bordeaux-950/80 hover:bg-bordeaux-900 text-bordeaux-200 border border-bordeaux-800/80 transition shadow-sm"
               title="Come installare su iPhone"
             >
               <Icons.Phone />
-              <span className="hidden md:inline">Installa su iPhone</span>
+              <span className="hidden md:inline">iPhone</span>
             </button>
 
             <button
@@ -705,6 +995,15 @@ function App() {
               title="Cambia tema chiaro/scuro"
             >
               {theme === "dark" ? <Icons.Sun /> : <Icons.Moon />}
+            </button>
+
+            {/* Logout button */}
+            <button
+              onClick={() => setShowLogoutConfirm(true)}
+              className="p-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-900/60 transition"
+              title="Disconnetti account"
+            >
+              <Icons.LogOut />
             </button>
           </div>
         </div>
@@ -777,7 +1076,7 @@ function App() {
               </div>
             </div>
             <div className="text-base sm:text-lg font-bold text-white truncate">
-              {formData.operator || "Gabriele Ponziano"}
+              {authSession.username}
             </div>
             <div className="text-[11px] text-slate-400 font-medium">
               Data: <span className="text-slate-200">{new Date().toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</span>
@@ -975,7 +1274,7 @@ function App() {
                   type="text"
                   value={formData.operator}
                   onChange={(e) => setFormData({ ...formData, operator: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-sm text-white focus:outline-none focus:border-bordeaux-500 transition"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-sm text-white focus:outline-none focus:border-bordeaux-500 transition font-medium"
                 />
               </div>
             </div>
@@ -1365,6 +1664,35 @@ function App() {
         </section>
       </main>
 
+      {/* MODAL: Logout Confirmation */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="relative w-full max-w-sm p-6 rounded-3xl bg-slate-900 border border-bordeaux-800/80 shadow-2xl text-white text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 mx-auto flex items-center justify-center">
+              <Icons.LogOut />
+            </div>
+            <h3 className="text-base font-bold">Vuoi davvero disconnetterti?</h3>
+            <p className="text-xs text-slate-400">
+              La sessione permanente verrà interrotta su questo dispositivo e dovrai reinserire password e username al prossimo accesso.
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white shadow-lg transition"
+              >
+                Disconnetti
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL: Activity Detail */}
       {viewingActivity && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
@@ -1591,7 +1919,7 @@ function App() {
           <span className="w-2 h-2 rounded-full bg-bordeaux-500"></span>
           <span className="font-semibold text-slate-300">TaskLog Pro Enterprise</span>
           <span>•</span>
-          <span>React Edition</span>
+          <span>Sessione Permanente: {authSession.username}</span>
         </div>
         <p className="text-[11px] text-slate-400">
           Progettato con palette Bordeaux Corporate per Gabriele Ponziano
