@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>TaskLog Pro • Registro Attività Aziendale</title>
+  
+  <!-- PWA & Apple iOS Tags -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#67001A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TaskLog Pro">
+  <link rel="apple-touch-icon" href="./assets/icons/icon-180.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/icon-180.png">
+  <link rel="icon" type="image/svg+xml" href="./assets/icons/icon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-192.png">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bordeaux: {
+              50: '#FDF2F4',
+              100: '#FCE7EA',
+              200: '#F9CFD7',
+              300: '#F4A6B7',
+              400: '#EB718D',
+              500: '#A31D45',
+              600: '#8B1E3F',
+              700: '#800020', // Rosso Bordeaux Corporate Standard
+              800: '#67001A', // Bordeaux Profondo
+              900: '#4A0E17', // Bordeaux Scuro Executive
+              950: '#2A060C'
+            }
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+            mono: ['SF Mono', 'ui-monospace', 'Menlo', 'Monaco', 'Courier New', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18, ReactDOM 18 & Babel Standalone -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" crossorigin></script>
+
+  <!-- Stili Personalizzati e Print Layout -->
+  <style>
+    :root {
+      --color-bordeaux-primary: #800020;
+      --color-bordeaux-deep: #67001A;
+      --color-bordeaux-dark: #4A0E17;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    body {
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    input, textarea, select {
+      user-select: text;
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(128, 0, 32, 0.25);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(128, 0, 32, 0.5);
+    }
+
+    /* Print Optimization for Reports */
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        padding: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-only {
+        display: block !important;
+      }
+      .table-container {
+        overflow: visible !important;
+        box-shadow: none !important;
+        border: 1px solid #e2e8f0 !important;
+      }
+      table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+      }
+      th, td {
+        border: 1px solid #cbd5e1 !important;
+        padding: 8px 10px !important;
+        font-size: 11px !important;
+        color: #0f172a !important;
+      }
+      th {
+        background-color: #67001A !important;
+        color: #ffffff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      tr:nth-child(even) td {
+        background-color: #f8fafc !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .page-break {
+        page-break-after: always;
+      }
+    }
+    @media screen {
+      .print-only {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-bordeaux-700 selection:text-white transition-colors duration-200">
+  <div id="root">
+    <!-- Fallback Splash Loader -->
+    <div class="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+      <div class="relative w-20 h-20 mb-6">
+        <div class="absolute inset-0 rounded-3xl bg-bordeaux-800 animate-pulse"></div>
+        <img src="./assets/icons/icon.svg" alt="TaskLog Pro" class="relative z-10 w-20 h-20 p-2 drop-shadow-xl" />
+      </div>
+      <h1 class="text-2xl font-bold tracking-tight text-white mb-2">TaskLog Pro</h1>
+      <p class="text-sm text-slate-400">Caricamento del registro aziendale in corso...</p>
+    </div>
+  </div>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('✓ TaskLog Pro Service Worker registrato con successo:', reg.scope))
+          .catch((err) => console.warn('Service Worker non registrato:', err));
+      });
+    }
+  </script>
+
+  <!-- React Application Source -->
+  <script type="text/babel" src="./app.js"></script>
+</body>
+</html>

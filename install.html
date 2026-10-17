@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Installa TaskLog Pro su iPhone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body {
+      background-color: #020617;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .bordeaux-gradient {
+      background: linear-gradient(135deg, #4A0E17 0%, #67001A 50%, #800020 100%);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6">
+  <div class="max-w-xl w-full bg-slate-900 border border-red-950/80 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+    
+    <!-- Header -->
+    <div class="flex items-center gap-4 border-b border-slate-800 pb-5">
+      <img src="./assets/icons/icon.svg" alt="TaskLog Pro" class="w-14 h-14 rounded-2xl shadow-lg shadow-red-950/60" />
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl font-black tracking-tight text-white">Task<span class="text-rose-400">Log</span> Pro</h1>
+          <span class="px-2 py-0.5 text-[10px] font-bold rounded-md bg-[#800020] text-white">IPHONE & MAC</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-0.5">Guida installazione rapida via Wi-Fi o GitHub Pages</p>
+      </div>
+    </div>
+
+    <!-- QR Code Box -->
+    <div class="flex flex-col sm:flex-row items-center gap-6 p-5 rounded-2xl bg-slate-950 border border-slate-800">
+      <div id="qrcode" class="p-3 bg-white rounded-2xl shadow-md shrink-0 flex items-center justify-center min-w-[150px] min-h-[150px]"></div>
+      
+      <div class="space-y-2 text-center sm:text-left">
+        <span class="inline-block px-2.5 py-1 text-[11px] font-bold rounded-full bg-rose-950/80 text-rose-300 border border-rose-800/60">
+          Inquadra con la Fotocamera iPhone
+        </span>
+        <h3 class="text-sm font-bold text-white">Collegamento Diretto Wi-Fi</h3>
+        <p class="text-xs text-slate-400">
+          Assicurati che il tuo iPhone sia collegato alla stessa rete Wi-Fi del Mac, poi inquadra il codice con l'app <strong>Fotocamera</strong>.
+        </p>
+        <div class="pt-1">
+          <a id="directLink" href="#" target="_blank" class="text-xs font-mono text-rose-400 hover:underline break-all"></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Steps -->
+    <div class="space-y-2.5">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Passaggi per aggiungere l'icona su iPhone:</h3>
+      
+      <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-xs">
+        <span class="w-6 h-6 rounded-full bg-[#800020] text-white font-bold flex items-center justify-center shrink-0">1</span>
+        <div>
+          <strong class="text-white">Inquadra il QR Code</strong> e tocca il banner giallo per aprire il link in <strong>Safari</strong> su iPhone.
+        </div>
+      </div>
+
+      <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-xs">
+        <span class="w-6 h-6 rounded-full bg-[#800020] text-white font-bold flex items-center justify-center shrink-0">2</span>
+        <div>
+          In Safari, tocca il tasto <strong>Condividi</strong> in basso (l'icona con il quadrato e la freccia verso l'alto ⎋).
+        </div>
+      </div>
+
+      <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-xs">
+        <span class="w-6 h-6 rounded-full bg-[#800020] text-white font-bold flex items-center justify-center shrink-0">3</span>
+        <div>
+          Scorri verso l'alto e tocca <strong>"Aggiungi alla schermata Home" ➕</strong>, poi premi <strong>"Aggiungi"</strong>.
+        </div>
+      </div>
+
+      <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-xs">
+        <span class="w-6 h-6 rounded-full bg-emerald-700 text-white font-bold flex items-center justify-center shrink-0">✓</span>
+        <div>
+          <strong class="text-white">Fatto!</strong> L'icona bordeaux di TaskLog Pro comparirà sulla Home del tuo iPhone e funzionerà a schermo intero senza barre del browser.
+        </div>
+      </div>
+    </div>
+
+    <!-- Mac Direct Button -->
+    <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+      <span class="text-xs text-slate-500">Vuoi aprirlo subito sul Mac?</span>
+      <a href="./index.html" class="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#800020] hover:bg-[#67001A] text-white shadow transition">
+        Apri TaskLog Pro sul Mac →
+      </a>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const ip = urlParams.get('ip') || window.location.hostname;
+    const port = urlParams.get('port') || window.location.port || '8080';
+    const targetUrl = `http://${ip}:${port}/index.html`;
+
+    document.getElementById('directLink').innerText = targetUrl;
+    document.getElementById('directLink').href = targetUrl;
+
+    new QRCode(document.getElementById("qrcode"), {
+      text: targetUrl,
+      width: 140,
+      height: 140,
+      colorDark: "#4A0E17",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  </script>
+</body>
+</html>
